@@ -9,20 +9,21 @@ public class Server extends ServerSocket {
 	List<CreateServerThread> threadlist = new ArrayList<CreateServerThread>();
 	
     private static final int SERVER_PORT = 2013;
+    MysqlDemo sqldemo;
 
     public Server() throws Exception {
+    	
         super(SERVER_PORT);
+        sqldemo = new MysqlDemo();
 
         try {
             while (true) {
                 Socket socket = accept();
-                System.out.println("有用户连接到服务器");
                 threadlist.add(new CreateServerThread(socket));//当有请求时，启一个线程处理
             }
         } catch (IOException e) {
-        } finally {
-            close();
-        }
+        	e.printStackTrace();
+        } 
     }
 
     //线程类
@@ -30,43 +31,49 @@ public class Server extends ServerSocket {
         Socket client;
         BufferedReader bufferedReader;
         PrintWriter printWriter;
-        MysqlDemo sqldemo;
         String[] conf;
         String s = null;
-        boolean close = false;
+        int signin=1;
+        int signup=1;
         
         public CreateServerThread(Socket s) throws Exception {
             client = s;
-            sqldemo = new MysqlDemo();
             printWriter = new PrintWriter(client.getOutputStream());
             bufferedReader = new BufferedReader(new InputStreamReader(client.getInputStream()));
-            System.out.println(client.getInetAddress());
-            System.out.println(client.getPort());
             start();
         }
 
         public void run() {
+        	
             try {
-                String line;
                 while (true) {
-                	line="";
-                	while(s==null&&client.getInputStream().available() <= 0) {}
-//                	while(client.getInputStream().available() <= 0) {
-//            			try {
-//    						sleep(1000);
-//    					} catch (InterruptedException e) {
-//    						e.printStackTrace();
-//    					}
-//            		}
+                	String line="";
+                	
+                	
+                	while(s==null&&client.getInputStream().available() <= 0) {
+                		try {
+    						sleep(100);
+    					} catch (InterruptedException e) {
+    						e.printStackTrace();
+    					}
+                	}
+
+                	
                 	if(client.getInputStream().available()>0) {
                 		line = bufferedReader.readLine();
 	                	if(line.length()>0) {
-		                	if(line.startsWith("signin")) {
+		                	if(line.startsWith("signin")&&signin==1) {
 		                		conf = line.split(" ");
+		                		System.out.println("有用户登陆");
+		                		System.out.println("用户名:"+conf[1]);
+		                		System.out.println("用户地址："+client.getInetAddress());
+		                        System.out.println("用户端口"+client.getPort());
+//		                        System.out.println();
 		                    	if(sqldemo.findByNameAndPasswd(conf[1], conf[2])==true) {
 		                    		this.setName(conf[1]);
 		                    		printWriter.println("signin succeed");
 		                    		printWriter.flush();
+		                    		signin++;
 		                    	}
 		                    	else {
 		                    		printWriter.println("signin failed");
@@ -75,11 +82,21 @@ public class Server extends ServerSocket {
 		                    }
 	                	
 	                    
-		                	else if(line.startsWith("signup")) {
+		                	else if(line.startsWith("signup")&&signup==1) {
 		                    	conf = line.split(" ");
-		                    	sqldemo.insert(conf[1], conf[2]);
-		                    	printWriter.println("signup succeed");
-		                    	printWriter.flush();
+		                    	System.out.println("有用户注册");
+		                    	System.out.println("用户名:"+conf[1]);
+		                		System.out.println("用户地址："+client.getInetAddress());
+		                        System.out.println("用户端口"+client.getPort());
+		                    	if(sqldemo.insert(conf[1], conf[2])==true) {
+			                    	printWriter.println("signup succeed");
+			                    	printWriter.flush();
+			                    	signup++;
+		                    	}
+		                    	if(sqldemo.insert(conf[1], conf[2])==false) {
+		                    		printWriter.println("signup failed");
+			                    	printWriter.flush();
+		                    	}
 		                    }
 	                	
 	                	
@@ -95,6 +112,7 @@ public class Server extends ServerSocket {
 		                	}
 		                	
 		                	else if("exit".equals(line)) {
+		                		threadlist.remove(this);
 		                		return;
 		                	}
 	                	
@@ -102,10 +120,19 @@ public class Server extends ServerSocket {
 		                    else {
 		                    	String[] neirong;
 		                    	neirong = line.split(" ");
-		                    	for(int i=0; i<threadlist.size();i++) {
-		                    		if(neirong[0].equals(threadlist.get(i).getName())) {
-		                    			threadlist.get(i).s = this.getName()+" "+neirong[1];
-		                    			break;
+		                    	if("所有人".equals(neirong[0])) {
+		                    		for(int i=0; i<threadlist.size();i++) {
+			                    		if(!(threadlist.get(i).getName().equals(this.getName()))) {
+			                    			threadlist.get(i).s = this.getName()+" "+neirong[1];
+			                    		}
+			                    	}
+		                    	}
+		                    	else {
+		                    		for(int i=0; i<threadlist.size();i++) {
+		                    			if(neirong[0].equals(threadlist.get(i).getName())) {
+		                    				threadlist.get(i).s = this.getName()+" "+neirong[1];
+		                    				break;
+		                    			}
 		                    		}
 		                    	}
 		                    }
@@ -120,6 +147,8 @@ public class Server extends ServerSocket {
                 	
                 }
             } catch (Exception e) {
+            	e.printStackTrace();
+            	return;
             }
         }
     }
@@ -129,4 +158,5 @@ public class Server extends ServerSocket {
 	public static void main(String[] args) throws Exception {
         new Server();
     }
+    
 }

@@ -2,9 +2,12 @@ package frame;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+
 import socket.SocketClient;
 
-public class ClientListener implements ActionListener {
+public class ClientListener extends WindowAdapter implements ActionListener  {
 	
 	Denglu frame;
 	SocketClient socketclient;
@@ -23,6 +26,17 @@ public class ClientListener implements ActionListener {
 			e.printStackTrace();
 		}
 	}
+	
+	
+	public void windowClosing(WindowEvent e)  //关闭窗口时同时断开socket连接
+    {
+		try {
+			socketclient.exit();
+		} catch (Exception e1) {
+			e1.printStackTrace();
+		}
+        System.exit(0);
+    }
 	
 	@Override
 	public void actionPerformed(ActionEvent e) {
